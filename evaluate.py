@@ -84,8 +84,6 @@ def align_eval_input(eval_system, result_dir="."):
                 system_ans = system_answers[i]
                 system_ans = system_ans.lstrip(f'{i+1}.').strip()
                 jsonline = json.loads(jsonline)
-                if jsonline["type"] in ignore_types:
-                    continue
                 jsonline['sys_ans'] = system_ans
                 jsonline['file'] = folder
                 new_dict_list.append(jsonline)
