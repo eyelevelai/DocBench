@@ -2,6 +2,7 @@
 # or search an existing bucket
 BUCKET_ID = 0
 
-
 GX_KEY = ""
 OPENAI_API_KEY = ""
+
+IGNORE_TYPES = ["meta-data", "unanswerable"]

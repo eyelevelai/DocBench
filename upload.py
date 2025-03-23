@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from groundx import Document, GroundX
 
@@ -5,6 +6,8 @@ from gx_config import BUCKET_ID, GX_KEY
 
 if not GX_KEY:
     raise ValueError("\n\n\tGX_KEY is not set\n")
+
+ACTIVE_BUCKET = BUCKET_ID
 
 def scan_data_folder(data_path: Path):
     pdf_files = []
@@ -22,6 +25,8 @@ def scan_data_folder(data_path: Path):
     return pdf_files, jsonl_files
 
 def prompt_bucket_action(bucket_id: int):
+    global ACTIVE_BUCKET
+
     if bucket_id == 0:
         answer = input("Bucket ID is 0. Do you want to create a new bucket? (y/n): ").strip().lower()
         if answer not in ("y", "yes"):
@@ -32,8 +37,11 @@ def prompt_bucket_action(bucket_id: int):
     else:
         answer = input(f"Bucket ID is set to {bucket_id}. Do you want to upload to bucket {bucket_id}? (y/n): ").strip().lower()
         if answer not in ("y", "yes"):
-            print("Bucket upload not confirmed. Exiting.")
-            exit(1)
+            answer = input("Do you want to create a new bucket? (y/n): ").strip().lower()
+            if answer not in ("y", "yes"):
+                print("Exiting.")
+                exit(1)
+            ACTIVE_BUCKET = 0
         else:
             print("Bucket upload confirmed.")
 
@@ -49,7 +57,16 @@ if __name__ == "__main__":
         exit(1)
 
     print()
-    prompt_bucket_action(BUCKET_ID)
+    prompt_bucket_action(ACTIVE_BUCKET)
+
+    bucket_id = ACTIVE_BUCKET
+    if ACTIVE_BUCKET < 1:
+        current_date = datetime.now().strftime("%Y_%d_%m_%H_%M")
+        bucket_name = f"DocBench_{current_date}"
+
+        res = gx_client.buckets.create(name=bucket_name)
+        bucket_id = res.bucket.bucket_id
+        print(f"\ncreated bucket: [{bucket_name}]\n\n\tset BUCKET_ID = {bucket_id} in gx_config.py before running tests\n")
 
     docs = []
     pdfs, jsonls = scan_data_folder(data_folder)
@@ -57,7 +74,7 @@ if __name__ == "__main__":
         if pdf_path not in skip:
             docs.append(
                 Document(
-                    bucket_id=BUCKET_ID,
+                    bucket_id=bucket_id,
                     file_path=str(pdf_path),
                 )
             )
@@ -65,5 +82,8 @@ if __name__ == "__main__":
     res = gx_client.ingest(
         documents=docs,
         wait_for_complete=True,
+        batch_size=25,
     )
-    print(res)
+    print("\n\ningest complete\n")
+    if ACTIVE_BUCKET < 1 and bucket_id > 0:
+        print(f"\tremember to set BUCKET_ID = {bucket_id} in gx_config.py before running tests\n")

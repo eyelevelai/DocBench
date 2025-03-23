@@ -56,6 +56,34 @@ The DocBench test scripts will save the responses to a file within each test fol
 
 Use the DocBench script `evaluate.py` to execute the DocBench auto-evaluation scripts. To run the tests using GroundX, use the following command:
 
+```bash
+python evaluate.py --system gx --result_dir ./results
+```
+
+This will run an auto-evaluation of the GroundX answers and output the results to `./results`
+
+To evaluate another system such as `gpt-4o`, run this command:
+
+```bash
+python evaluate.py --system gpt-4o --result_dir ./results
+```
+
+### Viewing the Results
+
+You can either inspect the evaluation results as jsonl files at: `results/{system}_eval_output.jsonl` or run the `eval_result.py` script to view a summary of the results:
+
+```bash
+python eval_result.py --system gx --result_dir ./results
+```
+
+This will print the test results for GroundX.
+
+To see the results for another system such as `gpt-4o`, run this command:
+
+```bash
+python eval_result.py --system gpt-4o --result_dir ./results
+```
+
 ### Changes
 
 We made the following changes:

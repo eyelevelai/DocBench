@@ -1,6 +1,8 @@
 import glob, json, time
 from pathlib import Path
 
+from gx_config import IGNORE_TYPES
+
 from groundx import GroundX
 from openai import OpenAI
 
@@ -22,7 +24,6 @@ class GXClient():
 
         res = self.client.documents.lookup(id=bucket_id, n=300)
         if res and res.documents:
-            print(f"\n\n\tdocs [{len(res.documents)}]\n")
             for d in res.documents:
                 self.doc_map[d.file_name] = d.document_id
 
@@ -31,8 +32,6 @@ class GXClient():
             if res and res.documents:
                 for d in res.documents:
                     self.doc_map[d.file_name] = d.document_id
-
-        print(f"\n\n\tdoc_map [{len(self.doc_map)}]\n")
 
     def query(
         self,
@@ -62,12 +61,10 @@ class GXClient():
         if source == "":
             return ""
 
-        print(f"\n\n\tlen source [{len(source)}]\n")
-
         messages = [
             {
                 "role": "system",
-                "content": "You are a helpful assistant that helps users answer questions based on the given document.",
+                "content": "You are a helpful assistant that helps users answer questions based on the given document.\n\nYour answers must be 1-2 sentences long. Your answer will be auto-evaluated by an LLM that can only analyze short answers.",
             },
             {
                 "role": "system",
@@ -123,7 +120,11 @@ class GXClient():
         answers = ""
         jsonlines = open(f'./data/{folder}/{folder}_qa.jsonl', 'r').readlines()
         for i, line in enumerate(jsonlines):
-            question = json.loads(line)['question']
+            jsonline = json.loads(line)
+            if jsonline["type"] in IGNORE_TYPES:
+                continue
+
+            question = jsonline['question']
 
             if i > 0:
                 answers += "\n"
