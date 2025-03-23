@@ -1,0 +1,8 @@
+groundx>=2.3.0
+openai
+PyMuPDF
+frontend
+tools
+tiktoken
+transformers
+tenacity
