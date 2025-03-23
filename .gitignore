@@ -1,0 +1,6 @@
+__pycache__
+.DS_Store
+data*.zip
+data
+gx_config.py
+results/*

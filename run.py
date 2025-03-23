@@ -5,7 +5,7 @@ import os
 import glob
 import requests
 from openai import OpenAI
-from fitz import fitz
+import fitz
 import tiktoken
 from transformers import AutoTokenizer
 from secret_key import OPENAI_API_KEY
@@ -29,18 +29,35 @@ class Runner:
     def from_type(cls, system_name):
         if system_name == 'gpt4' or system_name == 'gpt-4o':
             client = OpenAI(api_key=OPENAI_API_KEY)
+        elif system_name == 'gx':
+            from gx_config import BUCKET_ID, GX_KEY, OPENAI_API_KEY
+
+            if not BUCKET_ID:
+                raise ValueError("\n\n\tBUCKET_ID is not set\n")
+            if not GX_KEY:
+                raise ValueError("\n\n\tGX_KEY is not set\n")
+            if not OPENAI_API_KEY:
+                raise ValueError("\n\n\tOPENAI_API_KEY is not set\n")
+
+            from gx import GXClient
+
+            client = GXClient(api_key=GX_KEY, bucket_id=BUCKET_ID, openai_key=OPENAI_API_KEY)
         else:
             client = OpenAI(api_key=OPENAI_API_KEY, base_url="https://api.openai.com/v1")
         return cls(system_name, client)
 
     def run(self, folder):
-        pdf_path, q_string = self.get_pdfpath_jsonlines_qstr(folder)
-        file_content = self.get_document_content(folder, pdf_path)
-        if self.system == 'gpt4' or self.system == 'gpt-4o':
-            response = self.get_gpt4file_request(file_content, q_string)
+        response = ""
+        if self.system == "gx":
+            response = self.client.process_folder(folder)
         else:
-            file_content = self.truncate(file_content)
-            response = self.get_gpt_pl_request(file_content, q_string)
+            pdf_path, q_string = self.get_pdfpath_jsonlines_qstr(folder)
+            file_content = self.get_document_content(folder, pdf_path)
+            if self.system == 'gpt4' or self.system == 'gpt-4o':
+                response = self.get_gpt4file_request(file_content, q_string)
+            else:
+                file_content = self.truncate(file_content)
+                response = self.get_gpt_pl_request(file_content, q_string)
         result_dir = f'./data/{folder}/{self.system}_results.txt'
         with open(result_dir, 'w') as f:
             f.write(response)
@@ -228,7 +245,7 @@ class Runner_OSS:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--system", type=str, default="gpt-4o", choices=['gpt-4o','gpt4', 'gpt4_pl', 'gpt-4o_pl', 'gpt3.5', 'phi3-medium','commandr-35b','internlm2-20b', 'internlm2-7b', 'chatglm3-6b','gpt3.5','llama3-8b','llama3-70b','yi1.5-9b', 'yi1.5-34b','mixtral-8x7b','mistral-7b','gemma-7b', 'llama2-13b', 'kimi', 'claude3','glm4', 'qwen2.5', 'ernie4'], help="The name of running system.")
+    parser.add_argument("--system", type=str, default="gpt-4o", choices=['gpt-4o','gpt4', 'gpt4_pl', 'gpt-4o_pl', 'gpt3.5', 'phi3-medium','commandr-35b','internlm2-20b', 'internlm2-7b', 'chatglm3-6b','gpt3.5','llama3-8b','llama3-70b','yi1.5-9b', 'yi1.5-34b','mixtral-8x7b','mistral-7b','gemma-7b', 'llama2-13b', 'kimi', 'claude3','glm4', 'qwen2.5', 'ernie4', 'gx'], help="The name of running system.")
     parser.add_argument("--model_dir", type=str, default="YOUR OWN MODEL DIR",
                         help="Downloaded model paths.")
     parser.add_argument("--initial_folder", type=int, default=0,
@@ -239,7 +256,7 @@ def main():
     args = parser.parse_args()
 
     system = args.system
-    if 'gpt' in system:
+    if 'gpt' in system or 'gx' in system:
         runner = Runner.from_type(system)
     else:
         model_dir = args.model_dir

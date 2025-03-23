@@ -12,6 +12,15 @@ logging.basicConfig(format="%(asctime)s - %(levelname)s - %(name)s -   %(message
 logger = logging.getLogger(__name__)
 
 
+ignore_types = []
+try:
+    from gx_config import IGNORE_TYPES
+
+    ignore_types = IGNORE_TYPES
+except Exception:
+    1
+
+
 
 def check_cleansing(eval_system):
     all_folders = os.listdir('./data/')
@@ -47,11 +56,13 @@ def check_cleansing(eval_system):
                 raise Exception(f'Check the {folder}-folder')
     return 
 
-def align_eval_input(eval_system):
-    if os.path.exists(f'./{eval_system}_eval_input.jsonl'): return
+def align_eval_input(eval_system, result_dir="."):
+    if os.path.exists(f'{result_dir}/{eval_system}_eval_input.jsonl'): open(f'{result_dir}/{eval_system}_eval_input.jsonl', 'w').close()
     all_folders = os.listdir('./data/')
     for folder in all_folders:
-        if os.path.isdir(folder) and not folder.startswith('__') and not folder.startswith('.') and not folder.startswith('data'):
+        if os.path.isdir(f"./data/{folder}") and not folder.startswith('__') and not folder.startswith('.') and not folder.startswith('data'):
+            if not os.path.exists(f'./data/{folder}/{eval_system}_results.txt'):
+                continue
             system_answers = []
             with open(f'./data/{folder}/{eval_system}_results.txt', 'r') as f:
                 for line in f.readlines():
@@ -61,7 +72,15 @@ def align_eval_input(eval_system):
             
             jsonlines = open(f'./data/{folder}/{folder}_qa.jsonl', 'r').readlines()
             new_dict_list = []
+
+            lines = []
             for i, jsonline in enumerate(jsonlines):
+                js = json.loads(jsonline)
+                if js["type"] in ignore_types:
+                    continue
+                lines.append(jsonline)
+
+            for i, jsonline in enumerate(lines):
                 system_ans = system_answers[i]
                 system_ans = system_ans.lstrip(f'{i+1}.').strip()
                 jsonline = json.loads(jsonline)
@@ -69,21 +88,22 @@ def align_eval_input(eval_system):
                 jsonline['file'] = folder
                 new_dict_list.append(jsonline)
             
-            with open(f'./{eval_system}_eval_input.jsonl', 'a') as f:
+            with open(f'{result_dir}/{eval_system}_eval_input.jsonl', 'a') as f:
                 for json_dict in new_dict_list:
                     f.write(json.dumps(json_dict) + '\n')
 
     return
 
 
-def evaluate(eval_system, resume_id=0):
+def evaluate(eval_system, resume_id=0, result_dir="."):
     # read evaluation prompt
     eval_prompt_dir = './evaluation_prompt.txt'
     eval_prompt = open(eval_prompt_dir).read()
     system_content = 'You are a helpful evaluator.'
 
-    eval_inp_dir = f'./{eval_system}_eval_input.jsonl'
-    eval_out_dir = f'./{eval_system}_eval_output.jsonl'
+    eval_inp_dir = f'{result_dir}/{eval_system}_eval_input.jsonl'
+    eval_out_dir = f'{result_dir}/{eval_system}_eval_output.jsonl'
+    if os.path.exists(eval_out_dir): open(eval_out_dir, 'w').close()
 
     with open(eval_inp_dir, 'r') as f:
         json_dict_list = [json.loads(line) for line in f.readlines()]
@@ -105,20 +125,23 @@ def evaluate(eval_system, resume_id=0):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--system", type=str, default="", choices=['gpt-4o','gpt4', 'gpt4_pl', 'gpt-4o_pl', 'gpt3.5', 'phi3-medium','commandr-35b','internlm2-20b', 'internlm2-7b', 'chatglm3-6b','gpt3.5','llama3-8b','llama3-70b','yi1.5-9b', 'yi1.5-34b','mixtral-8x7b','mistral-7b','gemma-7b', 'llama2-13b', 'kimi', 'claude3','glm4', 'qwen2.5', 'ernie4'], help="The name of evaluated system.")
+    parser.add_argument("--system", type=str, default="", choices=['gpt-4o','gpt4', 'gpt4_pl', 'gpt-4o_pl', 'gpt3.5', 'phi3-medium','commandr-35b','internlm2-20b', 'internlm2-7b', 'chatglm3-6b','gpt3.5','llama3-8b','llama3-70b','yi1.5-9b', 'yi1.5-34b','mixtral-8x7b','mistral-7b','gemma-7b', 'llama2-13b', 'kimi', 'claude3','glm4', 'qwen2.5', 'ernie4', 'gx'], help="The name of evaluated system.")
     parser.add_argument("--resume_id", type=int, default=0,
                         help="From which folder to begin evaluation.")
+    parser.add_argument("--result_dir", type=str, default=".",
+                        help="Folder to save results.")
     
     
     args = parser.parse_args()
 
     eval_system = args.system
     resume_id = args.resume_id
+    result_dir = args.result_dir
 
-    if eval_system in ['gpt-4o','gpt4', 'gpt4_pl', 'gpt-4o_pl', 'gpt3.5', 'kimi', 'claude3','glm4', 'qwen2.5', 'ernie4']:
+    if eval_system in ['gpt-4o','gpt4', 'gpt4_pl', 'gpt-4o_pl', 'gpt3.5', 'kimi', 'claude3','glm4', 'qwen2.5', 'ernie4', 'gx']:
         check_cleansing(eval_system)
-        align_eval_input(eval_system)
-    evaluate(eval_system, resume_id=resume_id)
+        align_eval_input(eval_system, result_dir=result_dir)
+    evaluate(eval_system, resume_id=resume_id, result_dir=result_dir)
 
 
 

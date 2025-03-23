@@ -1,6 +1,102 @@
 # DocBench: A Benchmark for Evaluating LLM-based Document Reading Systems
 Paper Link: _[DocBench: A Benchmark for Evaluating LLM-based Document Reading Systems](https://arxiv.org/pdf/2407.10701)_
 
+## EyeLevel
+
+### Pre-Requisites
+
+Run `pip install -r requirements.txt` to install dependencies.
+
+It is recommended that you use python version 3.10.0+.
+
+### Uploading Files
+
+- [Download the DocBench data files](#data) and unzip at the base of this project
+  - The unzipped files should be at `./data`
+- Copy/Paste `gx_config.sample.py` to `gx_config.py`
+  - Add your `GX_KEY` and `OPENAI_API_KEY`
+  - If you wish to upload files to an existing bucket, set `BUCKET_ID`
+- Run the `upload.py` script to upload files to GroundX
+```bash
+python upload.py
+```
+
+### Running Tests
+
+Use the DocBench script `run.py` to execute the DocBench tests. To run the tests using GroundX, use the following command:
+
+```bash
+# runs all tests using GroundX: 1,102 test questions for 229 documents
+python run.py --system gx
+```
+
+To run the tests for a single PDF, use the following command options:
+
+```bash
+# runs the tests in folder 53 using GroundX: 5 test questions for inditex_2021.pdf
+python run.py --system gx --initial_folder 53 --total_folder_number 53
+```
+
+To run the tests using one of the other systems (e.g. gpt-4o), use the following command:
+
+```bash
+# runs all tests using GPT-4o + the agent file search tool: 1,102 test questions for 229 documents
+python run.py --system gpt-4o
+```
+
+```bash
+# runs the tests in folder 53 using GPT-4o + the agent file search tool: 5 test questions for inditex_2021.pdf
+python run.py --system gpt-4o --initial_folder 53 --total_folder_number 53
+```
+
+The DocBench test scripts will save the responses to a file within each test folder according to the following naming convention: `data/{test_number}/{system}_results.txt`
+
+
+### Evaluating Results
+
+Use the DocBench script `evaluate.py` to execute the DocBench auto-evaluation scripts. To run the tests using GroundX, use the following command:
+
+```bash
+python evaluate.py --system gx --result_dir ./results
+```
+
+This will run an auto-evaluation of the GroundX answers and output the results to `./results`
+
+To evaluate another system such as `gpt-4o`, run this command:
+
+```bash
+python evaluate.py --system gpt-4o --result_dir ./results
+```
+
+### Viewing the Results
+
+You can either inspect the evaluation results as jsonl files at: `results/{system}_eval_output.jsonl` or run the `eval_result.py` script to view a summary of the results:
+
+```bash
+python eval_result.py --system gx --result_dir ./results
+```
+
+This will print the test results for GroundX.
+
+To see the results for another system such as `gpt-4o`, run this command:
+
+```bash
+python eval_result.py --system gpt-4o --result_dir ./results
+```
+
+### Changes
+
+We made the following changes:
+
+- Added GroundX (`gx`) as a system option to: run and evaluate
+- Added `gx.py`, which contains the logic to produce completions based on GroundX RAG retrievals for `run.py`
+- Added `upload.py`, which contains logic to upload files to GroundX
+- Added a `gx_config.py` containing GroundX-specific configs
+- Added a `requirements.txt` to install dependencies (was only tested on system options `gpt-4o` and `gx`)
+- Added a `--result_dir` option to `evaluate.py` where result files can be saved
+- Moved `eval_result.ipynb` to `eval_result.py`, added command line options, and prettified the outputs
+- Added a `.gitignore`
+
 ## Introduction
 
 **DocBench** is a benchmark that takes raw PDF files and accompanying questions as inputs, with the objective of generating corresponding textual answers. It includes 229 real documents and 1,102 questions, spanning across five different domains and four major types of questions.
